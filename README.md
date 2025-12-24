@@ -1,1 +1,4 @@
-"# safeplug" 
+# excellBE
+
+npm install 
+npm run dev
