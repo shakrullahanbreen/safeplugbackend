@@ -1,0 +1,80 @@
+name: 🚀 Deploy Safeplug Backend to VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: 🐳 Deploy Backend Container
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🧾 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 🧠 Test SSH connection
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "echo '✅ SSH connection successful!'"
+
+      - name: 📦 Upload backend code to VPS
+        run: |
+          rsync -az --delete \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='node_modules' \
+            ./ \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/root/safeplug/safeplugbackend/
+
+      - name: 📝 Create .env file on VPS
+        run: |
+          echo "${{ secrets.ENV_FILE }}" | ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "cat > /root/safeplug/safeplugbackend/.env"
+
+      - name: 🐳 Build and Run Docker Container
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            set -e
+            cd /root/safeplug/safeplugbackend
+
+            echo "🛑 Stopping existing container..."
+            docker stop safeplug-backend 2>/dev/null || true
+            docker rm safeplug-backend 2>/dev/null || true
+
+            echo "🗑️ Removing old image..."
+            docker rmi safeplug-backend:1.0 --force 2>/dev/null || true
+
+            echo "🏗️ Building new image..."
+            docker build --no-cache -t safeplug-backend:1.0 .
+
+            echo "🚀 Starting container on port 5001..."
+            docker run -d \
+              --name safeplug-backend \
+              --network eseek-network \
+              -p 5001:5001 \
+              --env-file /root/safeplug/safeplugbackend/.env \
+              --restart always \
+              safeplug-backend:1.0
+
+            echo "🧹 Cleaning up unused images..."
+            docker image prune -f
+
+            echo "✅ Backend deployed successfully!"
+          EOF
+
+      - name: ✅ Verify Deployment
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            echo "📊 Docker Status:"
+            docker ps | grep safeplug-backend || echo "⚠️ Container not running"
+            echo ""
+            echo "🧾 Last 20 log lines:"
+            docker logs safeplug-backend --tail 20 2>/dev/null || echo "⚠️ No logs yet"
+          EOF
