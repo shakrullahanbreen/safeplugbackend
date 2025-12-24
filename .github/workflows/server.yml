@@ -78,3 +78,5 @@ jobs:
             echo "🧾 Last 20 log lines:"
             docker logs safeplug-backend --tail 20 2>/dev/null || echo "⚠️ No logs yet"
           EOF
+
+          
