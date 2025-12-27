@@ -6,41 +6,64 @@ on:
       - main
   workflow_dispatch:
 
+# Security: Limit permissions to minimum required
+permissions:
+  contents: read
+
 jobs:
   deploy:
     name: 🐳 Deploy Backend Container
     runs-on: ubuntu-latest
+    # Security: Set timeout to prevent hanging workflows
+    timeout-minutes: 15
+    
+    # Security: Define environment for deployment
+    environment:
+      name: production
+      url: https://server.safeplug.com
 
     steps:
       - name: 🧾 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: ⚙️ Set up SSH
+      - name: 🔐 Set up SSH with Host Key Verification
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      - name: 🔑 Add VPS Host Key (Security:Prevent MITM attacks)
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_HOST_KEY }}" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
       - name: 🧠 Test SSH connection
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "echo '✅ SSH connection successful!'"
+          ssh -o BatchMode=yes ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "echo '✅ SSH connection successful!'"
 
       - name: 📦 Upload backend code to VPS
         run: |
           rsync -az --delete \
-            -e "ssh -o StrictHostKeyChecking=no" \
+            -e "ssh -o BatchMode=yes" \
             --exclude='.git' \
             --exclude='.github' \
             --exclude='node_modules' \
+            --exclude='.env' \
+            --exclude='.env.local' \
             ./ \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/root/safeplug/safeplugbackend/
 
-      - name: 📝 Create .env file on VPS
+      - name: 📝 Securely create .env file on VPS
         run: |
-          echo "${{ secrets.ENV_FILE }}" | ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "cat > /root/safeplug/safeplugbackend/.env"
+          # Security: Use heredoc with proper quoting and set secure permissions
+          ssh -o BatchMode=yes ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'cat > /root/safeplug/safeplugbackend/.env && chmod 600 /root/safeplug/safeplugbackend/.env' << 'ENVEOF'
+          ${{ secrets.ENV_FILE }}
+          ENVEOF
+          echo "✅ .env file created with secure permissions"
 
       - name: 🐳 Build and Run Docker Container
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+          ssh -o BatchMode=yes ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
             set -e
             cd /root/safeplug/safeplugbackend
 
@@ -48,22 +71,27 @@ jobs:
             docker stop safeplug-backend 2>/dev/null || true
             docker rm safeplug-backend 2>/dev/null || true
 
-            echo "🗑️ Removing old image..."
+            echo "🗑️ Removing old safeplug-backend image only..."
             docker rmi safeplug-backend:1.0 --force 2>/dev/null || true
 
             echo "🏗️ Building new image..."
             docker build --no-cache -t safeplug-backend:1.0 .
 
-            echo "🚀 Starting container on port 5001..."
+            echo "🚀 Starting container with security options..."
             docker run -d \
               --name safeplug-backend \
               --network eseek-network \
-              -p 5001:5001 \
+              -p 127.0.0.1:5001:5001 \
               --env-file /root/safeplug/safeplugbackend/.env \
               --restart always \
+              --read-only \
+              --tmpfs /tmp:rw,noexec,nosuid,size=100m \
+              --security-opt=no-new-privileges:true \
+              --cap-drop=ALL \
+              --cap-add=NET_BIND_SERVICE \
               safeplug-backend:1.0
 
-            echo "🧹 Cleaning up unused images..."
+            echo "🧹 Cleaning up only dangling images..."
             docker image prune -f
 
             echo "✅ Backend deployed successfully!"
@@ -71,12 +99,10 @@ jobs:
 
       - name: ✅ Verify Deployment
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+          ssh -o BatchMode=yes ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
             echo "📊 Docker Status:"
             docker ps | grep safeplug-backend || echo "⚠️ Container not running"
             echo ""
-            echo "🧾 Last 20 log lines:"
-            docker logs safeplug-backend --tail 20 2>/dev/null || echo "⚠️ No logs yet"
+            echo "🔍 Health check:"
+            curl -sf http://localhost:5001/api/health > /dev/null && echo "✅ Backend API responding" || echo "⚠️ Backend not responding (may need different health endpoint)"
           EOF
-
-          
