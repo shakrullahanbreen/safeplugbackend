@@ -106,3 +106,5 @@ jobs:
             echo "🔍 Health check:"
             curl -sf http://localhost:5001/api/health > /dev/null && echo "✅ Backend API responding" || echo "⚠️ Backend not responding (may need different health endpoint)"
           EOF
+
+
