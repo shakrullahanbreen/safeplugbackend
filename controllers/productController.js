@@ -2496,8 +2496,8 @@ export const bulkUploadProducts = async (req, res) => {
 
           const pricing = {
             Retailer: { price: Number(retailerPrice) },
-            Wholesale: { price: Number(wholesalePrice) },
-            ChainStore: { price: Number(chainStorePrice) },
+            Wholesale: { price: Number(chainStorePrice) },
+            ChainStore: { price: Number(wholesalePrice) },
             Franchise: { price: Number(customerPrice) }
           };
 
@@ -2580,8 +2580,8 @@ export const bulkUploadProducts = async (req, res) => {
 
           const pricing = {
             Retailer: { price: Number(computedRetailer ?? finalRetailerPrice) },
-            Wholesale: { price: Number(computedWholesale ?? finalWholesalePrice) },
-            ChainStore: { price: Number(computedChain ?? finalChainStorePrice) },
+            Wholesale: { price: Number(computedChain ?? finalChainStorePrice) },
+            ChainStore: { price: Number(computedWholesale ?? finalWholesalePrice) },
             Franchise: { price: Number(computedCustomer ?? finalCustomerPrice) }
           };
 
@@ -2827,8 +2827,9 @@ export const exportProductsCsv = async (req, res) => {
       const pricing = p?.pricing || {};
       const customerPrice = pricing?.Franchise?.price ?? 0;
       const retailerPrice = pricing?.Retailer?.price ?? 0;
-      const wholesalePrice = pricing?.Wholesale?.price ?? 0;
-      const chainStorePrice = pricing?.ChainStore?.price ?? 0;
+      // Note: In DB, Wholesale stores chainStorePrice and ChainStore stores wholesalePrice
+      const wholesalePrice = pricing?.ChainStore?.price ?? 0;
+      const chainStorePrice = pricing?.Wholesale?.price ?? 0;
 
       return {
         name: p.name ?? "",
