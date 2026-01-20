@@ -179,6 +179,7 @@ export const createProduct = async (req, res) => {
       brand,
       stock,
       sku,
+      bin,
       tags,
       attributes,
       isNew,
@@ -317,6 +318,7 @@ export const createProduct = async (req, res) => {
       brand: brand || null,
       stock: Number(stock),
       sku: normalizedSku,
+      bin: typeof bin === "string" ? bin.trim() : (bin || ""),
       tags: Array.isArray(tags) ? tags : [],
       attributes: typeof attributes === "object" ? attributes : {},
 
@@ -516,6 +518,7 @@ export const updateProduct = async (req, res) => {
       stock,
       costPrice,
       sku,
+      bin,
       tags,
       attributes,
       isNew,
@@ -633,6 +636,7 @@ export const updateProduct = async (req, res) => {
       ...(brand !== undefined && { brand: brand || null }),
       ...(stock !== undefined && { stock }),
       ...(sku !== undefined && { sku: (typeof sku === "string" ? sku.trim() : sku) }),
+      ...(bin !== undefined && { bin: (typeof bin === "string" ? bin.trim() : bin) }),
       ...(tags !== undefined && { tags }),
       ...(models !== undefined && { models }),
       ...(attributes !== undefined && { attributes }),
@@ -1494,6 +1498,7 @@ if (search) {
           brand: { name: 1, logo: 1 },
           stock: 1,
           sku: 1,
+          bin: 1,
           tags: 1,
           attributes: 1,
           isNew: 1,
@@ -1654,6 +1659,7 @@ export const getSpecialProducts = async (req, res) => {
           brand: 1,
           stock: 1,
           sku: 1,
+          bin: 1,
           tags: 1,
           attributes: 1,
           isNew: 1,
@@ -2427,6 +2433,7 @@ export const bulkUploadProducts = async (req, res) => {
         
         const models = toList(row.models);
         const tags = toList(row.tags);
+        const bin = (row.bin || row["Bin"] || row["BIN"] || "").toString().trim();
         // Default to published when the CSV column is missing
         const published = row.published === undefined ? true : toBoolean(row.published);
         const mostPopular = toBoolean(row.mostPopular);
@@ -2542,6 +2549,7 @@ export const bulkUploadProducts = async (req, res) => {
             brand: null,
             stock: Number(stock),
             sku,
+            bin,
             tags,
             attributes: {},
             isNew: false,
@@ -2609,6 +2617,7 @@ export const bulkUploadProducts = async (req, res) => {
           if (categoryName) existingProduct.category = targetCategoryId;
           if (subCategoryName) existingProduct.subCategory = targetSubCategoryId || null;
           if (stock !== undefined) existingProduct.stock = Number(stock);
+          if (bin) existingProduct.bin = bin;
           if (tags && tags.length > 0) existingProduct.tags = tags;
           if (featured !== undefined) existingProduct.featured = !!featured;
           if (mostPopular !== undefined) existingProduct.mostPopular = !!mostPopular;
@@ -2803,6 +2812,7 @@ export const exportProductsCsv = async (req, res) => {
       "description",
       "stock",
       "sku",
+      "bin",
       "costPrice",
       "price",
       "retailPercent",
@@ -2837,6 +2847,7 @@ export const exportProductsCsv = async (req, res) => {
         description: p.description ?? "",
         stock: p.stock ?? "",
         sku: p.sku ?? "",
+        bin: p.bin ?? "",
         costPrice: p.costPrice ?? "",
         price: p.price ?? "",
         retailPercent: p.costPrice ? (((Number(p.price) - Number(p.costPrice)) / Number(p.costPrice)) * 100).toFixed(2) : "",

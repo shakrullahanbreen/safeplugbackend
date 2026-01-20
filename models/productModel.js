@@ -122,6 +122,11 @@ const productSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    bin: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     models: {
       type: [String],
       default: [],
