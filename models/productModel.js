@@ -86,6 +86,20 @@ const productSchema = new mongoose.Schema(
       default: [],
     },
 
+    discountImage: {
+      type: {
+        name: {
+          type: String,
+          default: "",
+        },
+        preview: {
+          type: String,
+          default: "",
+        }
+      },
+      default: null,
+    },
+
 
     published: {
       type: Boolean,
