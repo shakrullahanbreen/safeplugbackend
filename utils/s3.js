@@ -28,7 +28,6 @@ export const generateUploadUrl = async (fileName, fileType) => {
     Bucket: bucketName,
     Key: `${Date.now()}-${encodeURIComponent(fileName)}`,
     ContentType: fileType,
-    ACL: "public-read",
   };
   return await getSignedUrl(s3, new PutObjectCommand(params), { expiresIn: 3600 });
 };
