@@ -535,7 +535,8 @@ export const updateProduct = async (req, res) => {
       displayOrder
     } = req.body;
 
-    console.log("Update product request:", req.body);
+    console.log("Update product request - ID:", id);
+    console.log("Update product request - Fields received:", Object.keys(req.body).filter(key => req.body[key] !== undefined));
 
     // 1. Check if product exists
     const product = await Product.findById(id);
@@ -627,15 +628,15 @@ export const updateProduct = async (req, res) => {
 
     // 9. Build update object
     const updateData = {
-      ...(name && { name }),
+      ...(name !== undefined && { name }),
       ...(description !== undefined && { description }),
       ...(costPrice !== undefined && { costPrice }),
       ...(price !== undefined && { price }),
-      ...(pricing && Object.keys(pricing).length > 0 && { pricing }),
+      ...(pricing !== undefined && pricing !== null && typeof pricing === 'object' && Object.keys(pricing).length > 0 && { pricing }),
       ...(images !== undefined && { images }),
       ...(discountImage !== undefined && { discountImage: discountImage || null }),
       ...(published !== undefined && { published }),
-      ...(category && { category }),
+      ...(category !== undefined && { category }),
       ...(subCategory !== undefined && { subCategory: subCategory || null }),
       ...(brand !== undefined && { brand: brand || null }),
       ...(stock !== undefined && { stock }),
@@ -653,6 +654,8 @@ export const updateProduct = async (req, res) => {
       ...(displayOrder !== undefined && { displayOrder: Number(displayOrder) }),
       updatedAt: Date.now(),
     };
+
+    console.log("Update data being applied:", Object.keys(updateData).filter(key => key !== 'updatedAt'));
 
     // 10. Update the product
     const updatedProduct = await Product.findByIdAndUpdate(
