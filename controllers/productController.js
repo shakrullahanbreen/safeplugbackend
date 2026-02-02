@@ -181,7 +181,6 @@ export const createProduct = async (req, res) => {
       stock,
       sku,
       bin,
-      bin,
       tags,
       attributes,
       isNew,
