@@ -266,7 +266,7 @@ export const login = async (req, res) => {
         verfied: userDetails.verfied
       },
       process.env.TOKEN_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "30d" }
     );
 
 
