@@ -2897,3 +2897,60 @@ export const exportProductsCsv = async (req, res) => {
     return sendResponse(res, HTTP_STATUS_500, "Internal Server Error");
   }
 };
+
+/**
+ * GET /api/products/gallery-images
+ * Returns all product images (only products that have at least one image).
+ * Lightweight endpoint specifically for the admin image gallery picker.
+ * Supports pagination via ?page=1&limit=100
+ */
+export const getGalleryImages = async (req, res) => {
+  try {
+    const { page = 1, limit = 100 } = req.query;
+    const parsedPage = Math.max(Number(page), 1);
+    const parsedLimit = Math.min(Number(limit) || 100, 500);
+    const skip = (parsedPage - 1) * parsedLimit;
+
+    // Only fetch products that have at least one image
+    const filter = {
+      images: { $exists: true, $ne: [], $not: { $size: 0 } },
+    };
+
+    const totalProducts = await Product.countDocuments(filter);
+
+    const products = await Product.find(filter)
+      .select("name images category")
+      .populate("category", "name")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parsedLimit)
+      .lean();
+
+    // Flatten into a list of images with metadata
+    const images = products.flatMap((product) =>
+      (product.images || [])
+        .filter((img) => {
+          const url = img?.preview || img?.url || (typeof img === "string" ? img : null);
+          return url && url.trim() !== "";
+        })
+        .map((img, index) => ({
+          url: img.preview || img.url || img,
+          fileName: (img.preview || img.url || img)?.split("/").pop() || `image-${index}`,
+          productId: product._id,
+          productName: product.name || "Unknown",
+          categoryName: product.category?.name || "Unknown",
+        }))
+    );
+
+    return sendResponse(res, HTTP_STATUS_200, "Gallery images fetched", {
+      images,
+      totalProducts,
+      page: parsedPage,
+      limit: parsedLimit,
+      totalPages: Math.ceil(totalProducts / parsedLimit),
+    });
+  } catch (err) {
+    console.error("Error fetching gallery images:", err);
+    return sendResponse(res, HTTP_STATUS_500, "Internal Server Error");
+  }
+};

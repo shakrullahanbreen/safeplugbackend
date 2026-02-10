@@ -13,7 +13,8 @@ import {
   bulkUploadProducts,
   exportProductsCsv,
   updateProductsDisplayOrder,
-  getCategoryProductCount
+  getCategoryProductCount,
+  getGalleryImages
 } from "../controllers/productController.js";
 import auth from '../middlewares/auth.js';
 import { admin } from "../utils/helper.js";
@@ -28,6 +29,7 @@ productRouter.delete("/", auth,admin, deleteProduct);
 productRouter.put("/", auth,admin, updateProduct);
 productRouter.get("/", publicAuth ,getProducts);
 productRouter.get("/special", publicAuth ,getSpecialProducts);
+productRouter.get("/gallery-images", auth, admin, getGalleryImages);
 productRouter.post("/bulk-upload", auth, admin, upload.single("file"), bulkUploadProducts);
 productRouter.get("/export", auth, admin, exportProductsCsv);
 productRouter.patch("/:id/toggle-published", auth, admin,togglePublished);
